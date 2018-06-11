@@ -184,14 +184,6 @@ function woocommerce_ebilling_init() {
                     'title' => __('Shared Key :', 'ebilling'),
                     'type' => 'text',
                     'description' => __('clé d\'identification du compte pour le paiement.')),
-				'user_api' => array(
-                    'title' => __('Nom utilisateur EPA :', 'ebilling'),
-                    'type' => 'text',
-                    'description' => __('Nom utilisateur du compte eBilling Payment Api.', 'ebilling')),
-                'key_api' => array(
-                    'title' => __('Code secret :', 'ebilling'),
-                    'type' => 'text',
-                    'description' => __('clé d\'identification du compte eBilling Payment Api pour valider l\'utilisation du plugin.')),
             );
         }
 
@@ -294,11 +286,18 @@ function woocommerce_ebilling_init() {
 				'etat' => "En Cours",
 			));
 			
-			 $SERVER_EPA = 'http://jobs-conseil.com/eBillingPaymentApi/Ebillingpaymentapi/v/';
-			 $timeout = 10;
-			 
-			 $global_array_epa =
-            [
+			$SERVER_URL = "http://lab.billing-easy.net/api/v1/merchant/e_bills";
+			/*$SERVER_URL = "https://www.billing-easy.com/api/v1/merchant/e_bills";*/
+
+			// Username
+			$USER_NAME = $this->user_name; //'aristide';
+
+			// SharedKey
+			$SHARED_KEY =  $this->shared_key; //'a4e80739-61ea-430e-8ddc-db9eb7bf0783'; 
+
+
+			$global_array =
+			[
 				'payer_email' => $eb_email,
 				'payer_msisdn' => $eb_msisdn,
 				'amount' => $eb_amount,
@@ -309,49 +308,30 @@ function woocommerce_ebilling_init() {
 				'payer_name' => $eb_name,
 				'payer_address' => $eb_address,
 				'payer_city' => $eb_city,
-				'additional_info' => $eb_additionalinfo,
-				'first_name' => $eb_name,
-				'last_name' => $order->billing_last_name,
-				'adress' => $eb_address,
-				'city' => $eb_city,
-				'etat' => "En Cours",
-				'login' => $this->user_api,
-				'key' => $this->key_api,
-				'user_name' => $this->user_name,
-				'shared_key' => $this->shared_key,
-            ];
-			
-			$content_epa = $global_array_epa;
+				'additional_info' => $eb_additionalinfo
+			];
+			$content = json_encode($global_array);
+			$curl = curl_init($SERVER_URL);
+			curl_setopt($curl, CURLOPT_USERPWD, $USER_NAME . ":" . $SHARED_KEY);
+			curl_setopt($curl, CURLOPT_HEADER, false);
+			curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($curl, CURLOPT_HTTPHEADER, array("Content-type: application/json"));
+			curl_setopt($curl, CURLOPT_POST, true);
+			curl_setopt($curl, CURLOPT_POSTFIELDS, $content);
+			$json_response = curl_exec($curl);
 
-			$ch = curl_init($SERVER_EPA); 
+			$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-			curl_setopt($ch, CURLOPT_FRESH_CONNECT, true); 
-			curl_setopt($ch, CURLOPT_TIMEOUT, $timeout); 
-			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout); 
-
-			if (preg_match('`^https://`i', $url)) 
-			{ 
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
-			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); 
-			} 
-
-			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); 
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-			curl_setopt($ch, CURLOPT_POST, true);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $content_epa);
-
-			$reponse = curl_exec($ch); 
-			
-			$status = curl_getinfo($ch, CURLINFO_HTTP_CODE); 
-			
-			if($status != 200){
-				$redirect_url = get_site_url().'/commande/?erreur='.$status;
-				return $redirect_url;
+			if ( $status != 201 ) {
+				//die("Error: call to URL  failed with status $status, response $json_response, curl_error " . curl_error($curl) . ", curl_errno " . curl_errno($curl));
+					$redirect_url = get_site_url().'/commande/?erreur='.$status;
+					return $redirect_url;
 			}
-			
-			curl_close($ch);
-			
-			$response = json_decode($reponse, true);
+				
+			curl_close($curl);
+
+			$response = json_decode($json_response, true);				
+				
 
 			$url = get_site_url()."/wp-content/plugins/ebilling_v1_alpha_FR/post_ebilling.php?invoice_number=".$response['e_bill']['bill_id']."&eb_callbackurl=".$eb_callbackurl;
 			
@@ -389,56 +369,6 @@ function woocommerce_ebilling_init() {
 					$redirect_url = $order->get_cancel_order_url();						
 				} else {
 					//paiement complètement effectué
-					$total_amount = strip_tags($woocommerce->cart->get_cart_total());
-					if(preg_match("#^0[1-7]([-. ]?[0-9]{2}){3}$#", $order->billing_phone)){
-						//config envoi du message de notification
-						$url = 'http://api.allmysms.com/http/9.0/getInfo';
-						$login = 'Mar@seven';    //votre identifant allmysms
-						$apiKey = '9a410b084ee5fa6';    //votre mot de passe allmysms
-						$message = "Merci de faire vos achats avec nous. 
-							Votre transaction s'est bien effectuée, le paiement a été reçu. 
-							Votre commande a été traité. 
-							Le N° de votre commande est $order_id";    //le message SMS, attention pas plus de 160 caractères
-						$sender = get_bloginfo("name");  //l'expediteur, attention pas plus de 11 caractères alphanumériques
-						$msisdn = "+241".$order->billing_phone;//numé©ro de téléphone du destinataire
-						$smsData = "<DATA>
-						   &ltMESSAGE&gt<![CDATA[".$message."]]&gt&lt/MESSAGE&gt
-						   &ltTPOA&gt$sender&lt/TPOA&gt
-						   &ltSMS&gt
-							  &ltMOBILEPHONE&gt$msisdn&lt/MOBILEPHONE&gt
-						   &lt/SMS&gt
-						&lt/DATA&gt";
-
-						$fields = array(
-						'login'    => urlencode($login),
-						'apiKey'      => urlencode($apiKey),
-						'smsData'       => urlencode($smsData),
-						);
-
-						$fieldsString = "";
-						foreach($fields as $key=>$value) {
-							$fieldsString .= $key.'='.$value.'&';
-						}
-						rtrim($fieldsString, '&');
-
-						try {
-
-							$ch = curl_init();
-							curl_setopt($ch,CURLOPT_URL, $url);
-							curl_setopt($ch,CURLOPT_POST, count($fields));
-							curl_setopt($ch,CURLOPT_POSTFIELDS, $fieldsString);
-							curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-							$result = curl_exec($ch);
-
-							echo $result;
-
-							curl_close($ch);
-
-						} catch (Exception $e) {
-							echo 'Server sms injoignable ou trop longue a repondre ' . $e->getMessage();
-						}
-					}
 					$message = "Merci de faire vos achats avec nous. 
 						Votre transaction s'est bien effectuée, le paiement a été reçu. 
 						Votre commande a été traité. 
