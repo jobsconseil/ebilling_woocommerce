@@ -38,7 +38,15 @@ function sp_custom_notice(){
 		wc_add_notice($message, 'error');
 	}
 }
-add_action( 'wp', 'sp_custom_notice' );
+add_action( 'wp', 'sp_custom_notice' 
+
+function bweb_plugin_meta_links( $links, $file ) {
+	if ( $file === 'ebilling_v1_alpha_FR/ebilling.php' ) {
+		$links[] = '<a href="http://ebillingpaymentapi.jobs-conseil.com" target="_blank" title="' . __( 'Donate to this plugin &#187;' ) . '"><strong>' . __( 'Donate to this plugin &#187;' ) . '</strong></a>';
+	}
+	return $links;
+}
+add_filter( 'plugin_row_meta', 'bweb_plugin_meta_links', 10, 2 );
 
 function woocommerce_ebilling_init() {	
     if (!class_exists('WC_Payment_Gateway'))
@@ -64,45 +72,8 @@ function woocommerce_ebilling_init() {
 								'external_reference' => $_POST['reference']
 							)
 						);
-				$SERVER_EPA = 'http://jobs-conseil.com/eBillingPaymentApi/Ebillingpaymentapi/vUpdate/';
-				$timeout = 10; 
-				 $global_array_epa =
-				[
-					'paymentsystem' => $_POST['paymentsystem'],
-					'transactionid' => $_POST['transactionid'],
-					'billingid' => $_POST['billingid'],
-					'amount' => $_POST['amount'],
-					'etat' => 'Complété',
-					'reference' => $_POST['reference'],
-				];
-				$content_epa = $global_array_epa;
-
-				$ch = curl_init($SERVER_EPA); 
-
-				curl_setopt($ch, CURLOPT_FRESH_CONNECT, true); 
-				curl_setopt($ch, CURLOPT_TIMEOUT, $timeout); 
-				curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout); 
-
-				if (preg_match('`^https://`i', $url)) 
-				{ 
-				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
-				curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); 
-				} 
-
-				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); 
-				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true); 
-				curl_setopt($ch, CURLOPT_POST, true);
-				curl_setopt($ch, CURLOPT_POSTFIELDS, $content_epa);
-
-				// Inclure les headers HTTP de retour dans le corps de la réponse 
-				//curl_setopt($ch, CURLOPT_HEADER, true); 
-
-				$headers = curl_exec($ch); 
-				curl_close($ch);
-				if($headers != 200){				
-					http_response_code(200);
-					echo http_response_code();		
-				}
+				http_response_code(200);
+				echo http_response_code();		
 			} else {
 				http_response_code(400);
 				echo http_response_code();
@@ -446,4 +417,17 @@ function woocommerce_ebilling_init() {
 
     add_filter("plugin_action_links_$plugin", array('WC_EBilling', 'woocommerce_add_ebilling_settings_link'));
     add_filter('woocommerce_payment_gateways', array('WC_EBilling', 'woocommerce_add_ebilling_gateway'));
+
+    function addDonateLink( $links, $file ) {
+    	$plugin = plugin_basename(__FILE__);
+		if ( $file === $plugin ) {
+			$donate  = '<strong><a href="http://ebillingpaymentpai.jobs-conseil.com">' .
+			           '<span class="dashicons dashicons-heart"></span> ' .
+			           __( 'Donate', 'document-gallery' ) . '</a></strong>';
+			$links[] = $donate;
+		}
+
+		return $links;
+	}
+    add_filter( 'plugin_row_meta', 'addDonateLink', 10, 2);
 }
