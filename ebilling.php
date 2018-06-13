@@ -371,7 +371,6 @@ function woocommerce_ebilling_init() {
 					//paiement complètement effectué
 					$message = "Merci de faire vos achats avec nous. 
 						Votre transaction s'est bien effectuée, le paiement a été reçu. 
-						Votre commande a été traité. 
 						Le N° de votre commande est $order_id";
 					$order->payment_complete();
 					$order->update_status('completed');
