@@ -26,8 +26,6 @@ function sp_custom_notice(){
 			$message = "Problème d'authenfication du eBilling Payment.";
 		}elseif($_GET['erreur'] == 403){
 			$message = "Mauvais mode d'envoie de données.";
-		}elseif($_GET['erreur'] == 404){
-			$message = "La licence eBilling Payment a expirée.";
 		}else{
 			$message = "Erreur système.";
 		}
@@ -38,15 +36,8 @@ function sp_custom_notice(){
 		wc_add_notice($message, 'error');
 	}
 }
-add_action( 'wp', 'sp_custom_notice' 
 
-function bweb_plugin_meta_links( $links, $file ) {
-	if ( $file === 'ebilling_v1_alpha_FR/ebilling.php' ) {
-		$links[] = '<a href="http://ebillingpaymentapi.jobs-conseil.com" target="_blank" title="' . __( 'Donate to this plugin &#187;' ) . '"><strong>' . __( 'Donate to this plugin &#187;' ) . '</strong></a>';
-	}
-	return $links;
-}
-add_filter( 'plugin_row_meta', 'bweb_plugin_meta_links', 10, 2 );
+add_action( 'wp', 'sp_custom_notice' );
 
 function woocommerce_ebilling_init() {	
     if (!class_exists('WC_Payment_Gateway'))
@@ -104,9 +95,6 @@ function woocommerce_ebilling_init() {
             $this->user_name = $this->settings['user_name'];
             $this->shared_key = $this->settings['shared_key'];
 			
-			 $this->user_api = $this->settings['user_api'];
-            $this->key_api = $this->settings['key_api'];
-
             //$this->sandbox = $this->settings['sandbox'];
 
             $this->msg['message'] = "";
