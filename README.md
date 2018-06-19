@@ -78,8 +78,6 @@ __ * Vous pouvez sélectionner le bouton radio à côté de Ebilling à partir d
 * __Description__ - contrôle le message qui apparaît dans les champs de paiement sur la page de paiement. Ici vous pouvez énumérer les types de cartes que vous acceptez.
 * __ Nom de l'utilisateur__ - entrez votre nom d'utilisateur qui vous a été donné par Ebilling
 * __Shared Key__ - Entrez votre clé partagée qui vous est donnée par Ebilling
-* __EPA Nom de l'utilisateur__ - entrez votre login qui vous a été donné par Ebilling Payment Api (EPA)
-* __Secret Code__ - entrez votre code secret qui vous a été donné par Ebilling Payment Api (EPA)
 * __Sandbox__ - Cochez cette case pour activer le mode sandbox, n'oubliez pas de décoller si vous êtes prêt à accepter le paiement en direct sur votre site.
 * Cliquez sur __Save Changes__ pour les modifications que vous avez effectuées.
 
@@ -93,10 +91,3 @@ __ * Vous pouvez sélectionner le bouton radio à côté de Ebilling à partir d
 
 1. Vous devez disposer du plugin Woocommerce installé et activé sur votre site WordPress.
 2. Vous devez vous inscrire à Ebilling et à eBilling Payment Api pour obtenir le nom de l'utilisateur, shared key, secret code, EPA nom de l'utilisateur (http://jobs-conseil.com/eBillingPaymentApi/users/login) et (https://www.billing-easy.com/merchant/registrations/new )
-
-
-
-== Changelog ==
-
-= 1,0.0 =
-* Premier release
