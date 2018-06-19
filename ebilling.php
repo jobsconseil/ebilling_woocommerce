@@ -37,6 +37,8 @@ function sp_custom_notice(){
 	}
 }
 
+add_action( 'wp', 'sp_custom_notice' );
+
 function woocommerce_ebilling_init() {	
     if (!class_exists('WC_Payment_Gateway'))
         return;
