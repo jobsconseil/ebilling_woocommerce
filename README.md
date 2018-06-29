@@ -15,7 +15,7 @@ Ebilling Woocommerce Payment Gateway vous permet d'accepter le paiement sur votr
 Il s'agit d'une passerelle de paiement Ebilling pour Woocommerce.
 
 
-Pour vous inscrire à Ebilling Payment Api visitez leur site Web en cliquant sur [ici] (http://jobs-conseil.com/eBillingPaymentApi/users/login)
+Pour vous inscrire et télécharger à Ebilling Payment Api visitez leur site Web en cliquant sur [ici] (http://jobs-conseil.com/eBillingPaymentApi/users/login)
 
 Ebilling Woocommerce Payment Gateway vous permet d'accepter le paiement sur votre magasin Woocommerce, Ebilling Payments prend en charge les modes de paiement suivants : Portefeuilles mobiles.
 
@@ -90,4 +90,4 @@ __ * Vous pouvez sélectionner le bouton radio à côté de Ebilling à partir d
 = De quoi j'ai besoin pour utiliser le plugin =
 
 1. Vous devez disposer du plugin Woocommerce installé et activé sur votre site WordPress.
-2. Vous devez vous inscrire à Ebilling et à eBilling Payment Api pour obtenir le nom de l'utilisateur, shared key, secret code, EPA nom de l'utilisateur (http://jobs-conseil.com/eBillingPaymentApi/users/login) et (https://www.billing-easy.com/merchant/registrations/new )
+2. Vous devez vous inscrire à Ebilling pour obtenir le nom de l'utilisateur, shared key (https://www.billing-easy.com/merchant/registrations/new )
