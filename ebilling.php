@@ -18,16 +18,12 @@ add_action('plugins_loaded', 'woocommerce_ebilling_init', 0);
 
 function sp_custom_notice(){
 	$message = '';
-	if(isset($_GET['erreur'])){
+	if(isset($_GET['erreur']) && isset($_GET['msg'])){
 		$_GET['erreur'] = (int)$_GET['erreur'];
-		if($_GET['erreur'] == 401){
-			$message = "Problème d'enregistrement de la commande.";
-		}elseif($_GET['erreur'] == 402){
-			$message = "Problème d'authenfication du eBilling Payment.";
-		}elseif($_GET['erreur'] == 403){
-			$message = "Mauvais mode d'envoie de données.";
+		if($_GET['erreur'] == 422){
+			$message = "Le numéro de téléphone est incorrect (Exemple : 01000000). L'opération ne peut être exécutée.";	
 		}else{
-			$message = "Erreur système.";
+			$message = "L'opération ne peut être exécutée.";
 		}
 		$_SERVER['REQUEST_URI'] = '/commande/';
 		$_SERVER['QUERY_STRING'] = '';
@@ -283,8 +279,10 @@ function woocommerce_ebilling_init() {
 
 			if ( $status != 201 ) {
 				//die("Error: call to URL  failed with status $status, response $json_response, curl_error " . curl_error($curl) . ", curl_errno " . curl_errno($curl));
-					$redirect_url = get_site_url().'/commande/?erreur='.$status;
-					return $redirect_url;
+				$response = json_decode($json_response, true);
+				$redirect_url = get_site_url().'/commande/?erreur='.$status.'&msg='.$response['message'];
+				return $redirect_url;
+					//return $redirect_url;
 			}
 				
 			curl_close($curl);
@@ -292,7 +290,7 @@ function woocommerce_ebilling_init() {
 			$response = json_decode($json_response, true);				
 				
 
-			$url = get_site_url()."/wp-content/plugins/ebilling_v1_alpha_FR/post_ebilling.php?invoice_number=".$response['e_bill']['bill_id']."&eb_callbackurl=".$eb_callbackurl;
+			$url = get_site_url()."/wp-content/plugins/ebilling_woocommerce/post_ebilling.php?invoice_number=".$response['e_bill']['bill_id']."&eb_callbackurl=".$eb_callbackurl;
 			
 			return $url;            
         }
