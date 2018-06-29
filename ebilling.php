@@ -72,7 +72,7 @@ function woocommerce_ebilling_init() {
 		exit;
 	}
 
-    class WC_EBilling extends WC_Payment_Gateway {
+	class WC_EBilling extends WC_Payment_Gateway {
 
         public function __construct() {
             $this->ebilling_errors = new WP_Error();
@@ -84,6 +84,7 @@ function woocommerce_ebilling_init() {
 
             $this->init_form_fields();
             $this->init_settings();
+            $this->ebilling_woocommerce_db();
 			
 			$this->title = $this->settings['title'];
             $this->description = $this->settings['description'];
@@ -113,6 +114,35 @@ function woocommerce_ebilling_init() {
                 add_action('woocommerce_update_options_payment_gateways', array(&$this, 'process_admin_options'));
             }
         }
+
+        function ebilling_woocommerce_db() {
+			// Create DB Here
+			global $wpdb;
+			$charset_collate = $wpdb->get_charset_collate();
+			$table_name = $wpdb->prefix.'paiement';
+			$sql = "CREATE TABLE $table_name (
+				  `id` int(11) NOT NULL AUTO_INCREMENT,
+				  `email` varchar(255) NOT NULL,
+				  `phone` varchar(255) NOT NULL,
+				  `amount_order` float NOT NULL,
+				  `description` text  NOT NULL,
+				  `date` datetime NOT NULL,
+				  `external_reference` varchar(255) NOT NULL,
+				  `first_name` varchar(255) DEFAULT NULL,
+				  `last_name` varchar(255) NOT NULL,
+				  `address` varchar(255) NOT NULL,
+				  `city` varchar(255) NOT NULL,
+				  `paymentsystem` varchar(255) DEFAULT NULL,
+				  `amount` float DEFAULT NULL,
+				  `etat` varchar(255) NOT NULL,
+				  `billingid` varchar(255) DEFAULT NULL,
+				  `transactionid` varchar(255) DEFAULT NULL,
+				  PRIMARY KEY (id)
+			) $charset_collate;";
+
+			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+			dbDelta( $sql );
+		}
 
         function init_form_fields() { 
             $this->form_fields = array(
