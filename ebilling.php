@@ -3,7 +3,7 @@
   Plugin Name: E-Billing Moyen de Paiement - WooCommerce
   Plugin URI: http://jobs-conseil.com/eBillingPaymentApi/
   Description: Intégration facile de la solution Ebilling dans WooCommerce pour le paiement par mobile payment au Gabon.
-  Version: 1.0
+  Version: 1.1
   Author: Mebodo Aristide Richard
   Author URI: https://www.facebook.com/aristide.mebodo
  */	
@@ -14,13 +14,16 @@ if (!in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get
     exit;
 }
 
-add_action('plugins_loaded', 'woocommerce_ebilling_init', 0);
+add_action('plugins_loaded', 'wep_init', 0);
+add_filter('plugin_row_meta', 'wep_addDonateLink', 10, 2);
+add_action( 'wp', 'wep_custom_notice' );
 
-function sp_custom_notice(){
+function wep_custom_notice(){
 	$message = '';
-	if(isset($_GET['erreur']) && isset($_GET['msg'])){
-		$_GET['erreur'] = (int)$_GET['erreur'];
-		if($_GET['erreur'] == 422){
+	if(isset($_GET['erreur'])){
+		$erreur = sanitize_text_field($_GET['erreur']);
+		$erreur = (int)$erreur;
+		if($erreur == 422){
 			$message = "Le numéro de téléphone est incorrect (Exemple : 01000000). L'opération ne peut être exécutée.";	
 		}else{
 			$message = "L'opération ne peut être exécutée.";
@@ -33,9 +36,19 @@ function sp_custom_notice(){
 	}
 }
 
-add_action( 'wp', 'sp_custom_notice' );
+function wep_addDonateLink( $links, $file ) {
+	$plugin = plugin_basename(__FILE__);
+	if ( $file === $plugin ) {
+		$donate  = '<strong><a href="http://ebillingpaymentpai.jobs-conseil.com">' .
+		           '<span class="dashicons dashicons-heart"></span> ' .
+		           __( 'Donate', 'document-gallery' ) . '</a></strong>';
+		$links[] = $donate;
+	}
 
-function woocommerce_ebilling_init() {	
+	return $links;
+}
+
+function wep_init() {	
     if (!class_exists('WC_Payment_Gateway'))
         return;
 	
@@ -47,17 +60,22 @@ function woocommerce_ebilling_init() {
 		if (isset($order->id)) {
 			if ($_POST['amount'] == $order->order_total) {
 				global $wpdb;
+				$paymentsystem = sanitize_text_field($_POST['paymentsystem']);
+				$transactionid = sanitize_text_field($_POST['transactionid']);
+				$billingid = sanitize_text_field($_POST['billingid']);
+				$amount = sanitize_text_field($_POST['amount']);
+				$external_reference = sanitize_text_field($_POST['reference']);
 				$wpdb->update($wpdb->prefix."paiement", 
-							array(
-								'paymentsystem' => $_POST['paymentsystem'],
-								'transactionid' => $_POST['transactionid'],
-								'billingid' => $_POST['billingid'],
-								'amount' => $_POST['amount'],
+							[
+								'paymentsystem' => $paymentsystem,
+								'transactionid' => $transactionid,
+								'billingid' => $billingid,
+								'amount' => $amount,
 								'etat' => 'Complété',
-							),
-							array(
-								'external_reference' => $_POST['reference']
-							)
+							],
+							[
+								'external_reference' => $external_reference
+							]
 						);
 				http_response_code(200);
 				echo http_response_code();		
@@ -72,19 +90,19 @@ function woocommerce_ebilling_init() {
 		exit;
 	}
 
-	class WC_EBilling extends WC_Payment_Gateway {
+	class Ebilling extends WC_Payment_Gateway {
 
         public function __construct() {
             $this->ebilling_errors = new WP_Error();
 
             $this->id = 'ebilling';
-            $this->medthod_title = 'E-Billing Paiement';
+            $this->medthod_title = 'WooCommerce Ebilling Payment';
             $this->icon = apply_filters('woocommerce_ebilling_icon', plugins_url('assets/images/airtel-moov-acheter.png', __FILE__));
             $this->has_fields = false;
 
             $this->init_form_fields();
             $this->init_settings();
-            $this->ebilling_woocommerce_db();
+            $this->wep_db();
 			
 			$this->title = $this->settings['title'];
             $this->description = $this->settings['description'];
@@ -101,11 +119,12 @@ function woocommerce_ebilling_init() {
             if (isset($_REQUEST["ebilling"])) {
 				wc_add_notice($_REQUEST["ebilling"], "error");
             }
-			
-			//callback_url de ebilling après le success du paiement
-			if (isset($_GET["success_eb_paiment"]) && $_GET["success_eb_paiment"] != '') {
-				$_GET['success_eb_paiment'] = (int)$_GET['success_eb_paiment'];
-				$this->callback_ebilling_response($_GET['success_eb_paiment']);
+
+            //callback_url de ebilling après le success du paiement
+			if (isset($_GET["success_eb_paiment"]) && $_GET["success_eb_paiment"] != ''){
+				$success_eb_paiment = sanitize_text_field($_GET['success_eb_paiment']);
+				$success_eb_paiment = (int)$success_eb_paiment;
+				$this->wep_callback_ebilling_response($success_eb_paiment);
             }
 			
             if (version_compare(WOOCOMMERCE_VERSION, '2.0.0', '>=')) {
@@ -115,7 +134,7 @@ function woocommerce_ebilling_init() {
             }
         }
 
-        function ebilling_woocommerce_db() {
+        public function wep_db() {
 			// Create DB Here
 			global $wpdb;
 			$charset_collate = $wpdb->get_charset_collate();
@@ -187,13 +206,13 @@ function woocommerce_ebilling_init() {
                 echo wpautop(wptexturize($this->description));
         }
 
-        protected function get_ebilling_args($order) {
+        protected function wep_get_ebilling_args($order) {
             global $woocommerce;
 
             //$order = new WC_Order($order_id);
             $txnid = $order->id . '_' . date("ymds");
 
-            $redirect_url = $woocommerce->cart->get_checkout_url();
+            $redirect_url = $woocommerce->cart->get_commande_url();
 
             $productinfo = "Order: " . $order->id;
 
@@ -238,7 +257,7 @@ function woocommerce_ebilling_init() {
             return $ebilling_args;
         }
 
-        function post_to_url($data, $order) {
+        function wep_post_to_url($data, $order) {
 			global $wpdb;
 			global $woocommerce;
 			
@@ -271,8 +290,8 @@ function woocommerce_ebilling_init() {
 				'etat' => "En Cours",
 			));
 			
-			$SERVER_URL = "http://lab.billing-easy.net/api/v1/merchant/e_bills";
-			/*$SERVER_URL = "https://www.billing-easy.com/api/v1/merchant/e_bills";*/
+			//$SERVER_URL = "http://lab.billing-easy.net/api/v1/merchant/e_bills";
+			$SERVER_URL = "https://www.billing-easy.com/api/v1/merchant/e_bills";
 
 			// Username
 			$USER_NAME = $this->user_name; //'aristide';
@@ -310,9 +329,8 @@ function woocommerce_ebilling_init() {
 			if ( $status != 201 ) {
 				//die("Error: call to URL  failed with status $status, response $json_response, curl_error " . curl_error($curl) . ", curl_errno " . curl_errno($curl));
 				$response = json_decode($json_response, true);
-				$redirect_url = get_site_url().'/commande/?erreur='.$status.'&msg='.$response['message'];
+				$redirect_url = get_site_url().'/commande/?erreur='.$status;
 				return $redirect_url;
-					//return $redirect_url;
 			}
 				
 			curl_close($curl);
@@ -320,17 +338,28 @@ function woocommerce_ebilling_init() {
 			$response = json_decode($json_response, true);				
 				
 
-			$url = get_site_url()."/wp-content/plugins/ebilling_woocommerce/post_ebilling.php?invoice_number=".$response['e_bill']['bill_id']."&eb_callbackurl=".$eb_callbackurl;
+			//$url = get_site_url()."/wp-content/plugins/Woocommerce_Ebilling_Payment_fr/post_ebilling.php?invoice_number=".$response['e_bill']['bill_id']."&eb_callbackurl=".$eb_callbackurl;
 			
-			return $url;            
+			return [
+						'bill_id' => $response['e_bill']['bill_id'],
+						'eb_callbackurl' => $eb_callbackurl
+				   ];            
         }
 
         function process_payment($order_id) {
             $order = new WC_Order($order_id);
-            return array(
-                'result' => 'success',
-                'redirect' => $this->post_to_url($this->get_ebilling_args($order), $order)
-            );
+            
+            $response = $this->wep_post_to_url($this->wep_get_ebilling_args($order), $order);
+            
+            $invoice_number = $response['bill_id'];
+			$eb_callbackurl = $response['eb_callbackurl'];
+			
+			$url = "http://jobs-conseil.com/eBillingPaymentApi/Ebillingpaymentapi/redirectEbilling?invoice=".$invoice_number."&callback_url=".$eb_callbackurl;
+            
+            return [
+		                'result' => 'success',
+		                'redirect' => $url
+        		   ];
         }
 
         function showMessage($content) {
@@ -341,7 +370,7 @@ function woocommerce_ebilling_init() {
          *permet de valider une commande grâce au callback_url
          * @param int $params
          */
-		function callback_ebilling_response($params) {
+		function wep_callback_ebilling_response($params) {
             global $woocommerce;
 			$wc_order_id = WC()->session->get('order_awaiting_payment');
 			$order = new WC_Order($wc_order_id);
@@ -413,13 +442,13 @@ function woocommerce_ebilling_init() {
         }
 
         static function woocommerce_add_ebilling_gateway($methods) {
-            $methods[] = 'WC_EBilling';
+            $methods[] = 'Ebilling';
             return $methods;
         }
 
         // Ajout du lien de paramétrage à la page des plugins
         static function woocommerce_add_ebilling_settings_link($links) {
-            $settings_link = '<a href="admin.php?page=wc-settings&tab=checkout&section=wc_ebilling">Paramètres</a>';
+            $settings_link = '<a href="admin.php?page=wc-settings&tab=commande&section=ebilling">Paramètres</a>';
             array_unshift($links, $settings_link);
             return $links;
         }
@@ -428,22 +457,10 @@ function woocommerce_ebilling_init() {
 
     $plugin = plugin_basename(__FILE__);
 
-    add_filter('woocommerce_currencies', array('WC_EBilling', 'add_ebilling_gab_currency'));
-    add_filter('woocommerce_currency_symbol', array('WC_EBilling', 'add_ebilling_gab_currency_symbol'), 10, 2);
+    add_filter('woocommerce_currencies', array('Ebilling', 'add_ebilling_gab_currency'));
+    add_filter('woocommerce_currency_symbol', array('Ebilling', 'add_ebilling_gab_currency_symbol'), 10, 2);
 
-    add_filter("plugin_action_links_$plugin", array('WC_EBilling', 'woocommerce_add_ebilling_settings_link'));
-    add_filter('woocommerce_payment_gateways', array('WC_EBilling', 'woocommerce_add_ebilling_gateway'));
+    add_filter("plugin_action_links_$plugin", array('Ebilling', 'woocommerce_add_ebilling_settings_link'));
+    add_filter('woocommerce_payment_gateways', array('Ebilling', 'woocommerce_add_ebilling_gateway'));
 
-    function addDonateLink( $links, $file ) {
-    	$plugin = plugin_basename(__FILE__);
-		if ( $file === $plugin ) {
-			$donate  = '<strong><a href="http://ebillingpaymentpai.jobs-conseil.com">' .
-			           '<span class="dashicons dashicons-heart"></span> ' .
-			           __( 'Donate', 'document-gallery' ) . '</a></strong>';
-			$links[] = $donate;
-		}
-
-		return $links;
-	}
-    add_filter( 'plugin_row_meta', 'addDonateLink', 10, 2);
 }
