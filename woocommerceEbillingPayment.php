@@ -28,7 +28,7 @@ function wep_custom_notice(){
 		}else{
 			$message = "L'opération ne peut être exécutée.";
 		}
-		$_SERVER['REQUEST_URI'] = '/commande/';
+		$_SERVER['REQUEST_URI'] = '/checkout/';
 		$_SERVER['QUERY_STRING'] = '';
 		$_SERVER['REDIRECT_QUERY_STRING'] = '';
 		unset($_GET['erreur']);
@@ -54,12 +54,12 @@ function wep_init() {
 	
 	//verification de l'existance d'une notification
 	if(isset($_GET['notify_ebilling']) && $_GET['notify_ebilling']==1){		
-		global $wpdb;
-		$wc_order_id = $_POST['reference'];
-		$result = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}paiement WHERE external_reference = {$wc_order_id}", OBJECT );
-		$result = $result[0];
-		if (isset($result->id)) {
-			if ($_POST['amount'] == $result->amount_order) {
+		global $woocommerce;
+		$wc_order_id = (int)$_POST['reference'];
+		$order = new WC_Order($wc_order_id);
+		if (isset($order->id)) {
+			if ($_POST['amount'] == $order->order_total) {
+				global $wpdb;
 				$paymentsystem = sanitize_text_field($_POST['paymentsystem']);
 				$transactionid = sanitize_text_field($_POST['transactionid']);
 				$billingid = sanitize_text_field($_POST['billingid']);
@@ -263,10 +263,8 @@ function wep_init() {
 			
 			// Fetch all data (including those not optional) from session
             $eb_amount = $order->order_total;
-            $alphabet = "0123456789azertyuiopqsdfghjklmwxcvbnAZERTYUIOPQSDFGHJKLMWXCVBN";
-            $reference =  substr(str_shuffle(str_repeat($alphabet, 6)), 0, 6);
-            $eb_reference = $reference.'-'.$order->id;
-			$eb_shortdescription = 'Règlement de la commande '.$order->id.' via eBilling Payment dans la boutique '.get_bloginfo("name").'.';
+            $eb_reference = $order->id;
+			$eb_shortdescription = 'Règlement de la commande '.$eb_reference.' via eBilling Payment dans la boutique '.get_bloginfo("name").'.';
             $eb_email = $order->billing_email;
             $eb_msisdn = $order->billing_phone;
             $eb_name = $order->billing_first_name;
@@ -274,7 +272,7 @@ function wep_init() {
             $eb_city = $order->billing_city;
             $eb_detaileddescription = $data['invoice']['description'];
             $eb_additionalinfo = "Paiement effectué via eBilling";
-            $eb_callbackurl = $data['store']['website_url'].'/commande/?success_eb_paiment='.$eb_reference;
+            $eb_callbackurl = $data['store']['website_url'].'/checkout/?success_eb_paiment='.$eb_reference;
 			$date = date('Y-m-d H:m:s');
 			
 			//enregistrement dans la base de données
@@ -292,8 +290,8 @@ function wep_init() {
 				'etat' => "En Cours",
 			));
 			
-			//$SERVER_URL = "http://lab.billing-easy.net/api/v1/merchant/e_bills";
-			$SERVER_URL = "https://www.billing-easy.com/api/v1/merchant/e_bills";
+			$SERVER_URL = "https://lab.billing-easy.net/api/v1/merchant/e_bills";
+			//$SERVER_URL = "https://www.billing-easy.com/api/v1/merchant/e_bills";
 
 			// Username
 			$USER_NAME = $this->user_name; //'aristide';
@@ -331,7 +329,7 @@ function wep_init() {
 			if ( $status != 201 ) {
 				//die("Error: call to URL  failed with status $status, response $json_response, curl_error " . curl_error($curl) . ", curl_errno " . curl_errno($curl));
 				$response = json_decode($json_response, true);
-				$redirect_url = get_site_url().'/commande/?erreur='.$status;
+				$redirect_url = get_site_url().'/checkout/?erreur='.$status;
 				return $redirect_url;
 			}
 				
@@ -353,15 +351,21 @@ function wep_init() {
             
             $response = $this->wep_post_to_url($this->wep_get_ebilling_args($order), $order);
             
-            $invoice_number = $response['bill_id'];
-			$eb_callbackurl = $response['eb_callbackurl'];
-			
-			$url = "https://jobs-conseil.com/eBillingPaymentApi/Ebillingpaymentapi/redirectEbilling?invoice=".$invoice_number."&callback_url=".$eb_callbackurl;
-            
-            return [
-		                'result' => 'success',
-		                'redirect' => $url
-        		   ];
+            if(is_array($response)){
+            	$invoice_number = $response['bill_id'];
+				$eb_callbackurl = $response['eb_callbackurl'];
+				$url = "https://jobs-conseil.com/eBillingPaymentApi/Ebillingpaymentapi/labRedirectEbilling?invoice=".$invoice_number."&callback_url=".$eb_callbackurl;
+	            
+	            return [
+			                'result' => 'success',
+			                'redirect' => $url
+	        		   ];
+            }else{
+            	return [
+			                'result' => 'failure',
+			                'redirect' => $response
+	        		   ];
+            }
         }
 
         function showMessage($content) {
@@ -450,7 +454,7 @@ function wep_init() {
 
         // Ajout du lien de paramétrage à la page des plugins
         static function woocommerce_add_ebilling_settings_link($links) {
-            $settings_link = '<a href="admin.php?page=wc-settings&tab=commande&section=ebilling">Paramètres</a>';
+            $settings_link = '<a href="admin.php?page=wc-settings&tab=checkout&section=ebilling">Paramètres</a>';
             array_unshift($links, $settings_link);
             return $links;
         }
