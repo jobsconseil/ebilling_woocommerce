@@ -28,7 +28,7 @@ function wep_custom_notice(){
 		}else{
 			$message = "L'opération ne peut être exécutée.";
 		}
-		$_SERVER['REQUEST_URI'] = '/checkout/';
+		$_SERVER['REQUEST_URI'] = '/paiement/';
 		$_SERVER['QUERY_STRING'] = '';
 		$_SERVER['REDIRECT_QUERY_STRING'] = '';
 		unset($_GET['erreur']);
@@ -54,12 +54,12 @@ function wep_init() {
 	
 	//verification de l'existance d'une notification
 	if(isset($_GET['notify_ebilling']) && $_GET['notify_ebilling']==1){		
-		global $woocommerce;
-		$wc_order_id = (int)$_POST['reference'];
-		$order = new WC_Order($wc_order_id);
-		if (isset($order->id)) {
-			if ($_POST['amount'] == $order->order_total) {
-				global $wpdb;
+		global $wpdb;
+		$wc_order_id = $_POST['reference'];
+		$result = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}paiement WHERE external_reference = {$wc_order_id}", OBJECT );
+		$result = $result[0];
+		if (isset($result->id)) {
+			if ($_POST['amount'] == $result->amount_order) {
 				$paymentsystem = sanitize_text_field($_POST['paymentsystem']);
 				$transactionid = sanitize_text_field($_POST['transactionid']);
 				$billingid = sanitize_text_field($_POST['billingid']);
@@ -123,7 +123,8 @@ function wep_init() {
             //callback_url de ebilling après le success du paiement
 			if (isset($_GET["success_eb_paiment"]) && $_GET["success_eb_paiment"] != ''){
 				$success_eb_paiment = sanitize_text_field($_GET['success_eb_paiment']);
-				$success_eb_paiment = (int)$success_eb_paiment;
+				$success_eb_paiment = explode('-', $success_eb_paiment);
+				$success_eb_paiment = (int)$success_eb_paiment[1];
 				$this->wep_callback_ebilling_response($success_eb_paiment);
             }
 			
@@ -263,8 +264,10 @@ function wep_init() {
 			
 			// Fetch all data (including those not optional) from session
             $eb_amount = $order->order_total;
-            $eb_reference = $order->id;
-			$eb_shortdescription = 'Règlement de la commande '.$eb_reference.' via eBilling Payment dans la boutique '.get_bloginfo("name").'.';
+            $alphabet = "0123456789azertyuiopqsdfghjklmwxcvbnAZERTYUIOPQSDFGHJKLMWXCVBN";
+            $reference =  substr(str_shuffle(str_repeat($alphabet, 6)), 0, 6);
+            $eb_reference = $reference.'-'.$order->id;
+			$eb_shortdescription = 'Don Nº '.$order->id.' via eBilling Payment pour l\'association '.get_bloginfo("name").'.';
             $eb_email = $order->billing_email;
             $eb_msisdn = $order->billing_phone;
             $eb_name = $order->billing_first_name;
@@ -272,7 +275,7 @@ function wep_init() {
             $eb_city = $order->billing_city;
             $eb_detaileddescription = $data['invoice']['description'];
             $eb_additionalinfo = "Paiement effectué via eBilling";
-            $eb_callbackurl = $data['store']['website_url'].'/checkout/?success_eb_paiment='.$eb_reference;
+            $eb_callbackurl = $data['store']['website_url'].'/paiement/?success_eb_paiment='.$eb_reference;
 			$date = date('Y-m-d H:m:s');
 			
 			//enregistrement dans la base de données
@@ -314,6 +317,7 @@ function wep_init() {
 				'payer_city' => $eb_city,
 				'additional_info' => $eb_additionalinfo
 			];
+
 			$content = json_encode($global_array);
 			$curl = curl_init($SERVER_URL);
 			curl_setopt($curl, CURLOPT_USERPWD, $USER_NAME . ":" . $SHARED_KEY);
@@ -325,14 +329,14 @@ function wep_init() {
 			$json_response = curl_exec($curl);
 
 			$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-
-			if ( $status != 201 ) {
+			
+			if ($status != 201) {
 				//die("Error: call to URL  failed with status $status, response $json_response, curl_error " . curl_error($curl) . ", curl_errno " . curl_errno($curl));
 				$response = json_decode($json_response, true);
-				$redirect_url = get_site_url().'/checkout/?erreur='.$status;
+				$redirect_url = get_site_url().'/paiement/?erreur='.$status;
 				return $redirect_url;
 			}
-				
+
 			curl_close($curl);
 
 			$response = json_decode($json_response, true);				
@@ -350,7 +354,6 @@ function wep_init() {
             $order = new WC_Order($order_id);
             
             $response = $this->wep_post_to_url($this->wep_get_ebilling_args($order), $order);
-            
             if(is_array($response)){
             	$invoice_number = $response['bill_id'];
 				$eb_callbackurl = $response['eb_callbackurl'];
@@ -380,20 +383,22 @@ function wep_init() {
             global $woocommerce;
 			$wc_order_id = WC()->session->get('order_awaiting_payment');
 			$order = new WC_Order($wc_order_id);
+
 			if ($params != 0) {
                 //commande annulé
 				$order_id = $params;
 				if ($wc_order_id <> $order_id) {
 					$message = "Merci de faire vos achats avec nous. 
 						Le délai de transaction est dépassé. 
-						Le N° de votre commande est $order_id";
+						Le N° de votre don est $order_id";
 					wc_add_notice( $message , 'notice' );
 					$redirect_url = $order->get_cancel_order_url();						
 				} else {
+
 					//paiement complètement effectué
-					$message = "Merci de faire vos achats avec nous. 
+					$message = "Merci pour votre Don. 
 						Votre transaction s'est bien effectuée, le paiement a été reçu. 
-						Le N° de votre commande est $order_id";
+						Le N° de votre don est $order_id";
 					$order->payment_complete();
 					$order->update_status('completed');
 					wc_add_notice( $message, 'success' );
@@ -454,7 +459,7 @@ function wep_init() {
 
         // Ajout du lien de paramétrage à la page des plugins
         static function woocommerce_add_ebilling_settings_link($links) {
-            $settings_link = '<a href="admin.php?page=wc-settings&tab=checkout&section=ebilling">Paramètres</a>';
+            $settings_link = '<a href="admin.php?page=wc-settings&tab=commande&section=ebilling">Paramètres</a>';
             array_unshift($links, $settings_link);
             return $links;
         }
