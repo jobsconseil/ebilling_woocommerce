@@ -6,7 +6,7 @@
   Version: 1.1
   Author: Mebodo Aristide Richard
   Author URI: https://www.facebook.com/aristide.mebodo
- */	
+ */
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -24,7 +24,7 @@ function wep_custom_notice(){
 		$erreur = sanitize_text_field($_GET['erreur']);
 		$erreur = (int)$erreur;
 		if($erreur == 422){
-			$message = "Le numéro de téléphone est incorrect (Exemple : 01000000). L'opération ne peut être exécutée.";	
+			$message = "Le numéro de téléphone est incorrect (Exemple : 01000000). L'opération ne peut être exécutée.";
 		}else{
 			$message = "L'opération ne peut être exécutée.";
 		}
@@ -48,12 +48,12 @@ function wep_addDonateLink( $links, $file ) {
 	return $links;
 }
 
-function wep_init() {	
+function wep_init() {
     if (!class_exists('WC_Payment_Gateway'))
         return;
-	
+
 	//verification de l'existance d'une notification
-	if(isset($_GET['notify_ebilling']) && $_GET['notify_ebilling']==1){		
+	if(isset($_GET['notify_ebilling']) && $_GET['notify_ebilling']==1){
 		global $wpdb;
 		$wc_order_id = $_POST['reference'];
 		$result = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}paiement WHERE external_reference = {$wc_order_id}", OBJECT );
@@ -65,7 +65,7 @@ function wep_init() {
 				$billingid = sanitize_text_field($_POST['billingid']);
 				$amount = sanitize_text_field($_POST['amount']);
 				$external_reference = sanitize_text_field($_POST['reference']);
-				$wpdb->update($wpdb->prefix."paiement", 
+				$wpdb->update($wpdb->prefix."paiement",
 							[
 								'paymentsystem' => $paymentsystem,
 								'transactionid' => $transactionid,
@@ -78,7 +78,7 @@ function wep_init() {
 							]
 						);
 				http_response_code(200);
-				echo http_response_code();		
+				echo http_response_code();
 			} else {
 				http_response_code(400);
 				echo http_response_code();
@@ -103,18 +103,18 @@ function wep_init() {
             $this->init_form_fields();
             $this->init_settings();
             $this->wep_db();
-			
+
 			$this->title = $this->settings['title'];
             $this->description = $this->settings['description'];
 
             $this->user_name = $this->settings['user_name'];
             $this->shared_key = $this->settings['shared_key'];
-			
+
             //$this->sandbox = $this->settings['sandbox'];
 
             $this->msg['message'] = "";
             $this->msg['class'] = "";
-			
+
 
             if (isset($_REQUEST["ebilling"])) {
 				wc_add_notice($_REQUEST["ebilling"], "error");
@@ -127,7 +127,7 @@ function wep_init() {
 				$success_eb_paiment = (int)$success_eb_paiment[1];
 				$this->wep_callback_ebilling_response($success_eb_paiment);
             }
-			
+
             if (version_compare(WOOCOMMERCE_VERSION, '2.0.0', '>=')) {
                 add_action('woocommerce_update_options_payment_gateways_' . $this->id, array(&$this, 'process_admin_options'));
             } else {
@@ -164,7 +164,7 @@ function wep_init() {
 			dbDelta( $sql );
 		}
 
-        function init_form_fields() { 
+        function init_form_fields() {
             $this->form_fields = array(
                 'enabled' => array(
                     'title' => __('Activé/Désactivé', 'ebilling'),
@@ -241,11 +241,11 @@ function wep_init() {
                 "store" => array(
                     "name" => get_bloginfo("name"),
                     "website_url" => get_site_url()
-                ), 
+                ),
                 "actions" => array(
                     "cancel_url" => $redirect_url,
                     "return_url" => $redirect_url
-                ), 
+                ),
                 "custom_data" => array(
                     "order_id" => $order->id,
                     "trans_id" => $txnid,
@@ -261,7 +261,7 @@ function wep_init() {
         function wep_post_to_url($data, $order) {
 			global $wpdb;
 			global $woocommerce;
-			
+
 			// Fetch all data (including those not optional) from session
             $eb_amount = $order->order_total;
             $alphabet = "0123456789azertyuiopqsdfghjklmwxcvbnAZERTYUIOPQSDFGHJKLMWXCVBN";
@@ -275,9 +275,9 @@ function wep_init() {
             $eb_city = $order->billing_city;
             $eb_detaileddescription = $data['invoice']['description'];
             $eb_additionalinfo = "Paiement effectué via eBilling";
-            $eb_callbackurl = $data['store']['website_url'].'/paiement/?success_eb_paiment='.$eb_reference;
+            $eb_callbackurl = $data['store']['website_url'].'/paiement/?success_eb_paiment='.$order->id;
 			$date = date('Y-m-d H:m:s');
-			
+
 			//enregistrement dans la base de données
 			$wpdb->insert($wpdb->prefix."paiement", array(
 				'email' => $eb_email,
@@ -292,7 +292,7 @@ function wep_init() {
 				'city' => $eb_city,
 				'etat' => "En Cours",
 			));
-			
+
 			$SERVER_URL = "https://lab.billing-easy.net/api/v1/merchant/e_bills";
 			//$SERVER_URL = "https://www.billing-easy.com/api/v1/merchant/e_bills";
 
@@ -300,7 +300,7 @@ function wep_init() {
 			$USER_NAME = $this->user_name; //'aristide';
 
 			// SharedKey
-			$SHARED_KEY =  $this->shared_key; //'a4e80739-61ea-430e-8ddc-db9eb7bf0783'; 
+			$SHARED_KEY =  $this->shared_key; //'a4e80739-61ea-430e-8ddc-db9eb7bf0783';
 
 
 			$global_array =
@@ -329,7 +329,7 @@ function wep_init() {
 			$json_response = curl_exec($curl);
 
 			$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-			
+
 			if ($status != 201) {
 				//die("Error: call to URL  failed with status $status, response $json_response, curl_error " . curl_error($curl) . ", curl_errno " . curl_errno($curl));
 				$response = json_decode($json_response, true);
@@ -339,26 +339,26 @@ function wep_init() {
 
 			curl_close($curl);
 
-			$response = json_decode($json_response, true);				
-				
+			$response = json_decode($json_response, true);
+
 
 			//$url = get_site_url()."/wp-content/plugins/Woocommerce_Ebilling_Payment_fr/post_ebilling.php?invoice_number=".$response['e_bill']['bill_id']."&eb_callbackurl=".$eb_callbackurl;
-			
+
 			return [
 						'bill_id' => $response['e_bill']['bill_id'],
 						'eb_callbackurl' => $eb_callbackurl
-				   ];            
+				   ];
         }
 
         function process_payment($order_id) {
             $order = new WC_Order($order_id);
-            
+
             $response = $this->wep_post_to_url($this->wep_get_ebilling_args($order), $order);
             if(is_array($response)){
             	$invoice_number = $response['bill_id'];
 				$eb_callbackurl = $response['eb_callbackurl'];
 				$url = "https://jobs-conseil.com/eBillingPaymentApi/Ebillingpaymentapi/labRedirectEbilling?invoice=".$invoice_number."&callback_url=".$eb_callbackurl;
-	            
+
 	            return [
 			                'result' => 'success',
 			                'redirect' => $url
@@ -388,16 +388,16 @@ function wep_init() {
                 //commande annulé
 				$order_id = $params;
 				if ($wc_order_id <> $order_id) {
-					$message = "Merci de faire vos achats avec nous. 
-						Le délai de transaction est dépassé. 
+					$message = "Merci de faire vos achats avec nous.
+						Le délai de transaction est dépassé.
 						Le N° de votre don est $order_id";
 					wc_add_notice( $message , 'notice' );
-					$redirect_url = $order->get_cancel_order_url();						
+					$redirect_url = $order->get_cancel_order_url();
 				} else {
 
 					//paiement complètement effectué
-					$message = "Merci pour votre Don. 
-						Votre transaction s'est bien effectuée, le paiement a été reçu. 
+					$message = "Merci pour votre Don.
+						Votre transaction s'est bien effectuée, le paiement a été reçu.
 						Le N° de votre don est $order_id";
 					$order->payment_complete();
 					$order->update_status('completed');
@@ -421,7 +421,7 @@ function wep_init() {
 			if (version_compare(WOOCOMMERCE_VERSION, "2.2") >= 0) {
 				add_post_meta($wc_order_id, '_ebilling_hash', $hash, true);
 			}
-			
+
 			wp_redirect($redirect_url);
 			exit;
         }
